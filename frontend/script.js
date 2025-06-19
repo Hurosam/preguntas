@@ -1,9 +1,7 @@
-// frontend/script.js
 document.addEventListener('DOMContentLoaded', () => {
-    // IMPORTANTE: Esta URL la obtendrás después de desplegar tu backend en Render.
-    // Por ahora, para pruebas locales, usa la dirección de tu servidor local.
+    // IMPORTANTE: Esta URL es para pruebas locales.
+    // CUANDO DESPLIEGUES EN RENDER, CAMBIA ESTA LÍNEA POR LA URL DE TU BACKEND.
     const BACKEND_URL = 'http://localhost:3000'; 
-    // CUANDO DESPLIEGUES, LA CAMBIARÁS POR ALGO COMO: 'https://tu-backend-xyz.onrender.com'
     
     let todasLasPreguntas = [];
 
@@ -15,19 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateBtn = document.getElementById('generate-btn');
     const questionsList = document.getElementById('questions-list');
 
-    // --- FUNCIÓN 1: CARGAR PREGUNTAS DESDE EL BACKEND ---
     async function cargarPreguntasDesdeBackend() {
         uploadStatus.textContent = 'Cargando preguntas desde el servidor...';
         uploadStatus.className = 'status-loading';
         try {
-            // Pide el archivo CSV al backend
-            const response = await fetch(`${BACKEND_URL}/data/preguntas.csv`);
-            if (!response.ok) {
-                throw new Error('No se pudo cargar el archivo de preguntas desde el servidor.');
-            }
+            const response = await fetch(`${BACKEND_URL}/data/preguntas.csv?t=${new Date().getTime()}`);
+            if (!response.ok) throw new Error('No se pudo cargar el archivo de preguntas.');
+            
             const csvText = await response.text();
-            const preguntasDesdeCsv = csvText
-                .split('\n').slice(1).map(l => l.trim()).filter(Boolean);
+            const preguntasDesdeCsv = csvText.split('\n').slice(1).map(l => l.trim().replace(/"/g, '')).filter(Boolean);
 
             todasLasPreguntas = preguntasDesdeCsv;
             uploadStatus.textContent = `¡Éxito! Se cargaron ${todasLasPreguntas.length} preguntas.`;
@@ -39,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- FUNCIÓN 2: SUBIR NUEVO ARCHIVO DE PREGUNTAS ---
     async function subirNuevoCsv() {
         const file = fileInput.files[0];
         if (!file) {
@@ -48,29 +41,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const formData = new FormData();
-        formData.append('archivoPreguntas', file); // 'archivoPreguntas' debe coincidir con upload.single() en el backend
+        formData.append('archivoPreguntas', file);
 
         uploadStatus.textContent = 'Subiendo nuevo archivo...';
         uploadStatus.className = 'status-loading';
 
         try {
-            const response = await fetch(`${BACKEND_URL}/upload`, {
-                method: 'POST',
-                body: formData,
-            });
-
+            const response = await fetch(`${BACKEND_URL}/upload`, { method: 'POST', body: formData });
             const result = await response.json();
-
-            if (!response.ok || !result.success) {
-                throw new Error(result.message || 'Error en el servidor al subir el archivo.');
-            }
+            if (!response.ok || !result.success) throw new Error(result.message || 'Error en el servidor.');
 
             uploadStatus.textContent = result.message;
             uploadStatus.className = 'status-success';
-
-            // Una vez subido, volvemos a cargar la lista de preguntas actualizada
             await cargarPreguntasDesdeBackend();
-
         } catch (error) {
             uploadStatus.textContent = `Error al subir: ${error.message}`;
             uploadStatus.className = 'status-error';
@@ -78,16 +61,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Función para generar preguntas (esta no cambia mucho)
     function generarPreguntas() {
-        // ... (la lógica de esta función es exactamente la misma que antes)
-        // ... (cópiala y pégala de tu versión anterior)
+        const cantidad = parseInt(numQuestionsInput.value, 10);
+        questionsList.innerHTML = '';
+
+        if (todasLasPreguntas.length === 0) {
+            alert('No hay preguntas cargadas. Sube un archivo o recarga la página.');
+            return;
+        }
+        if (isNaN(cantidad) || cantidad <= 0) {
+            alert('Por favor, introduce un número válido de preguntas.');
+            return;
+        }
+        if (cantidad > todasLasPreguntas.length) {
+            alert(`Solo hay ${todasLasPreguntas.length} preguntas disponibles. No se pueden generar ${cantidad}.`);
+            return;
+        }
+
+        const barajadas = [...todasLasPreguntas];
+        for (let i = barajadas.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [barajadas[i], barajadas[j]] = [barajadas[j], barajadas[i]];
+        }
+
+        const seleccionadas = barajadas.slice(0, cantidad);
+        seleccionadas.forEach(pregunta => {
+            const li = document.createElement('li');
+            li.textContent = pregunta;
+            questionsList.appendChild(li);
+        });
     }
 
-    // --- ASIGNAR EVENTOS ---
     uploadBtn.addEventListener('click', subirNuevoCsv);
     generateBtn.addEventListener('click', generarPreguntas);
 
-    // --- INICIO: Cargar las preguntas al cargar la página ---
     cargarPreguntasDesdeBackend();
 });

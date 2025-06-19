@@ -1,10 +1,10 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Servidor para el generador de preguntas",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js" // <-- AÑADE ESTA LÍNEA
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
