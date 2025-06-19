@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Preguntas</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #17a2b8 0%, #667eea 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: rgba(255, 255, 255, 0.95); border-radius: 20px; padding: 30px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); }
+        h1 { text-align: center; color: #333; margin-bottom: 30px; font-size: 2.5em; }
+        #questions-list { list-style: none; padding: 0; }
+        .list-item { display: flex; align-items: center; justify-content: space-between; background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); }
+        .list-item span { flex-grow: 1; margin-right: 15px; line-break: anywhere; }
+        .list-item .actions { flex-shrink: 0; }
+        .list-item .actions button { font-size: 14px; padding: 8px 12px; margin: 0 0 0 5px; cursor:pointer; border:none; color:white; border-radius: 5px; transition: opacity 0.2s;}
+        .list-item .actions button:hover { opacity: 0.8; }
+        .btn-edit { background: #007bff; }
+        .btn-delete { background: #dc3545; }
+        .page-actions { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
+        .btn-back { background: #6c757d; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✍️ Editor de Preguntas</h1>
+        <div id="questions-list">
+            <!-- Las preguntas se cargarán aquí con JavaScript -->
+        </div>
+        <div class="page-actions">
+            <a href="index.html" class="btn-back">⬅️ Volver a la página principal</a>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'generadorPreguntas_db';
+        let questions = [];
+        const questionsListContainer = document.getElementById('questions-list');
+
+        function saveQuestions() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
+        }
+
+        function renderQuestions() {
+            questionsListContainer.innerHTML = '';
+            if (questions.length === 0) {
+                questionsListContainer.innerHTML = '<p style="text-align:center; color:#888;">No hay preguntas para editar. Vuelve y agrega algunas.</p>';
+                return;
+            }
+            questions.forEach((question, index) => {
+                const listItem = document.createElement('div');
+                listItem.className = 'list-item';
+                const questionText = document.createElement('span');
+                questionText.textContent = question;
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'actions';
+                const editButton = document.createElement('button');
+                editButton.className = 'btn-edit';
+                editButton.textContent = 'Editar';
+                editButton.onclick = () => editQuestion(index);
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'btn-delete';
+                deleteButton.textContent = 'Eliminar';
+                deleteButton.onclick = () => deleteQuestion(index);
+                actionsDiv.appendChild(editButton);
+                actionsDiv.appendChild(deleteButton);
+                listItem.appendChild(questionText);
+                listItem.appendChild(actionsDiv);
+                questionsListContainer.appendChild(listItem);
+            });
+        }
+        
+        function editQuestion(index) {
+            const currentQuestion = questions[index];
+            const newQuestion = prompt('Edita la pregunta:', currentQuestion);
+            if (newQuestion && newQuestion.trim() !== '' && newQuestion !== currentQuestion) {
+                questions[index] = newQuestion.trim();
+                saveQuestions();
+                renderQuestions();
+            }
+        }
+
+        function deleteQuestion(index) {
+            if (confirm('¿Estás seguro de que quieres eliminar esta pregunta?')) {
+                questions.splice(index, 1);
+                saveQuestions();
+                renderQuestions();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedData = localStorage.getItem(STORAGE_KEY);
+            questions = savedData ? JSON.parse(savedData) : [];
+            renderQuestions();
+        });
+    </script>
+</body>
+</html>
