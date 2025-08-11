@@ -32,12 +32,12 @@ function renderQuestions() {
         const editButton = document.createElement('button');
         editButton.className = 'btn-edit';
         editButton.textContent = 'Editar';
-        editButton.onclick = () => editQuestion(index);
+        editButton.addEventListener('click', () => editQuestion(index));
 
         const deleteButton = document.createElement('button');
         deleteButton.className = 'btn-danger';
         deleteButton.textContent = 'Eliminar';
-        deleteButton.onclick = () => deleteQuestion(index);
+        deleteButton.addEventListener('click', () => deleteQuestion(index));
 
         actionsDiv.appendChild(editButton);
         actionsDiv.appendChild(deleteButton);
@@ -81,8 +81,7 @@ confirmNoBtn.addEventListener('click', () => {
     customConfirmModal.style.display = 'none';
 });
 
-document.addEventListener('DOMContentLoaded', () => {
-    const savedData = localStorage.getItem(STORAGE_KEY);
-    questions = savedData ? JSON.parse(savedData) : [];
-    renderQuestions();
-});
+// Carga inicial de la página
+const savedData = localStorage.getItem(STORAGE_KEY);
+questions = savedData ? JSON.parse(savedData) : [];
+renderQuestions();
