@@ -6,16 +6,17 @@
     <title>Generador de Preguntas Aleatorias</title>
     <!-- Librerías Externas (se cargan primero) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://unpkg.com/docx/dist/docx.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@7.8.2/build/index.js"></script>
     <!-- Estilos locales -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Todo el contenido del body es el mismo que antes -->
+    <!-- Todo el contenido del body va aquí -->
     <div class="container">
         <h1>🎯 Generador de Preguntas</h1>
         <div class="stats"><strong>📊 Total de preguntas en la base de datos: <span id="totalQuestions">0</span></strong></div>
+
         <div class="section">
             <h2>📁 Cargar Preguntas desde Archivo</h2>
             <p class="upload-instructions"><strong>Nota:</strong> El archivo debe tener una sola columna. La primera fila debe ser el encabezado (ej. "pregunta") y las siguientes filas deben contener una pregunta cada una.</p>
@@ -31,6 +32,7 @@
             <div class="loading" id="loadingFile"><div class="spinner"></div><div id="loadingFileName">Procesando archivo...</div></div>
             <div id="uploadAlertPlaceholder" style="margin-top: 15px;"></div>
         </div>
+
         <div class="section">
             <h2>✏️ Gestionar Preguntas</h2>
             <div class="form-group">
@@ -44,6 +46,7 @@
             <button id="exportAllExcelBtn" class="btn-export-excel">📥 Descargar como Excel</button>
             <button id="exportAllWordBtn" class="button-style" style="background: linear-gradient(45deg, #2980b9, #3498db);">📥 Descargar como Word</button>
         </div>
+
         <div class="section">
             <h2>🎲 Generar Preguntas Aleatorias</h2>
             <div class="form-group">
@@ -52,6 +55,7 @@
             </div>
             <button id="generateBtn">🚀 Generar Preguntas</button>
         </div>
+
         <div class="section">
             <h2>📝 Preguntas Generadas</h2>
             <div id="generatedQuestions" class="questions-container"><div style="text-align: center; color: #888; padding: 40px;">No hay preguntas generadas aún.</div></div>
@@ -62,6 +66,7 @@
             </div>
         </div>
     </div>
+
     <div class="modal-overlay" id="customConfirm">
         <div class="modal-content">
             <p id="confirmMessage"></p>
@@ -71,8 +76,50 @@
             </div>
         </div>
     </div>
-    
-    <!-- CAMBIO: Nuestro script local se carga al final, después de todo lo demás -->
-    <script src="index-script.js"></script>
+
+    <!-- Script mejorado que verifica la carga de bibliotecas -->
+    <script>
+        // Verificar que todas las bibliotecas estén cargadas antes de ejecutar el script principal
+        function checkLibraries() {
+            const requiredLibs = {
+                'XLSX': typeof XLSX !== 'undefined',
+                'saveAs': typeof saveAs !== 'undefined',
+                'docx': typeof docx !== 'undefined' || typeof window.docx !== 'undefined'
+            };
+            
+            const missingLibs = Object.entries(requiredLibs)
+                .filter(([name, loaded]) => !loaded)
+                .map(([name]) => name);
+            
+            if (missingLibs.length > 0) {
+                console.error('Bibliotecas faltantes:', missingLibs);
+                console.log('Estado de las bibliotecas:');
+                console.log('XLSX:', typeof XLSX);
+                console.log('saveAs:', typeof saveAs);
+                console.log('docx:', typeof docx);
+                console.log('window.docx:', typeof window.docx);
+                alert('Error: No se pudieron cargar algunas bibliotecas necesarias. Por favor, recarga la página.');
+                return false;
+            }
+            
+            console.log('Todas las bibliotecas cargadas correctamente');
+            return true;
+        }
+        
+        // Esperar a que el DOM y las bibliotecas estén listos
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                if (checkLibraries()) {
+                    // Cargar el script principal solo si todas las bibliotecas están disponibles
+                    const script = document.createElement('script');
+                    script.src = 'index-script.js';
+                    script.onerror = function() {
+                        alert('Error al cargar el script principal.');
+                    };
+                    document.body.appendChild(script);
+                }
+            }, 100); // Pequeña demora para asegurar que las bibliotecas se carguen
+        });
+    </script>
 </body>
 </html>

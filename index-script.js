@@ -1,4 +1,3 @@
-// No es necesario 'DOMContentLoaded' porque el script está al final del body
 const uploadArea = document.getElementById('uploadArea');
 const fileInput = document.getElementById('fileInput');
 const uploadPrompt = document.getElementById('uploadPrompt');
@@ -20,7 +19,6 @@ let questions = loadQuestions();
 let confirmCallback = null;
 let lastGeneratedQuestions = [];
 
-// --- Funciones de Lógica Principal ---
 function saveQuestions() { localStorage.setItem(STORAGE_KEY, JSON.stringify(questions)); }
 function loadQuestions() {
     const savedQuestions = localStorage.getItem(STORAGE_KEY);
@@ -81,7 +79,6 @@ function displayQuestions(questionList) {
     }
 }
 
-// --- Funciones de Exportación ---
 function exportToCsv(data, fileName) {
     if (data.length === 0) { alert('No hay preguntas para exportar.'); return; }
     let csvContent = "pregunta\n";
@@ -104,31 +101,43 @@ function exportToWord(data, fileName) {
         alert('No hay preguntas para exportar.');
         return;
     }
-    const { Document, Packer, Paragraph } = docx;
-    const paragraphs = data.map(question => new Paragraph({
-        text: question,
-        numbering: { reference: "numbered-list", level: 0 },
-    }));
-    const doc = new Document({
-        numbering: {
-            config: [{
-                reference: "numbered-list",
-                levels: [{
-                    level: 0,
-                    format: "decimal",
-                    text: "%1.",
-                    style: { paragraph: { indent: { left: 720, hanging: 360 } } },
-                }],
+    
+    // Verificar si la biblioteca docx está disponible
+    if (typeof docx === 'undefined' && typeof window.docx === 'undefined') {
+        alert('La biblioteca para generar documentos de Word no está cargada. Por favor, recarga la página e intenta nuevamente.');
+        return;
+    }
+    
+    try {
+        // Intentar acceder a docx de diferentes maneras
+        const docxLib = typeof docx !== 'undefined' ? docx : window.docx;
+        const { Document, Packer, Paragraph, LevelFormat } = docxLib;
+        
+        const paragraphs = data.map((question, index) => new Paragraph({
+            text: `${index + 1}. ${question}`,
+            spacing: {
+                after: 200,
+            },
+        }));
+        
+        const doc = new Document({
+            sections: [{
+                children: paragraphs
             }],
-        },
-        sections: [{ children: paragraphs }],
-    });
-    Packer.toBlob(doc).then(blob => {
-        saveAs(blob, fileName);
-    });
+        });
+        
+        Packer.toBlob(doc).then(blob => {
+            saveAs(blob, fileName);
+        }).catch(error => {
+            console.error('Error al generar el documento:', error);
+            alert('Error al generar el documento de Word.');
+        });
+    } catch (error) {
+        console.error('Error en exportToWord:', error);
+        alert('Error al exportar a Word. Verifica que todas las bibliotecas estén cargadas correctamente.');
+    }
 }
 
-// --- Funciones de Subida de Archivos ---
 function handleFileUpload(file) {
     uploadPrompt.style.display = 'none';
     loadingFileName.textContent = `Procesando: ${file.name}`;
@@ -139,6 +148,7 @@ function handleFileUpload(file) {
     else if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) { processExcelFile(file); } 
     else { alert('Formato de archivo no soportado.'); resetUploadArea(); }
 }
+
 function processCsvFile(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -148,6 +158,7 @@ function processCsvFile(file) {
     };
     reader.readAsText(file);
 }
+
 function processExcelFile(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -161,6 +172,7 @@ function processExcelFile(file) {
     };
     reader.readAsArrayBuffer(file);
 }
+
 function addQuestionsFromArray(newQuestionsArray) {
     const addedQuestions = [];
     newQuestionsArray.forEach(q => { if (!questions.includes(q)) { questions.push(q); addedQuestions.push(q); } });
@@ -177,22 +189,23 @@ function addQuestionsFromArray(newQuestionsArray) {
     uploadAlertPlaceholder.appendChild(alertDiv);
     setTimeout(() => alertDiv.remove(), 5000);
 }
+
 function resetUploadArea() { fileInput.value = ''; loadingFile.style.display = 'none'; uploadPrompt.style.display = 'block'; }
 
-// --- Funciones de UI (Alertas y Modales) ---
 function showAlert(message, type) {
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type}`; alertDiv.textContent = message;
     document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild.nextSibling);
     setTimeout(() => alertDiv.remove(), 5000);
 }
+
 function showCustomConfirm(message, callback) {
     confirmMessage.textContent = message;
     confirmCallback = callback;
     customConfirmModal.style.display = 'flex';
 }
 
-// --- Asignación de Eventos ---
+// Event Listeners
 document.getElementById('addQuestionBtn').addEventListener('click', addQuestion);
 document.getElementById('clearAllBtn').addEventListener('click', clearAllQuestions);
 document.getElementById('exportAllCsvBtn').addEventListener('click', () => exportToCsv(questions, 'banco_completo.csv'));
@@ -204,13 +217,21 @@ document.getElementById('exportGenExcelBtn').addEventListener('click', () => exp
 document.getElementById('exportGenWordBtn').addEventListener('click', () => exportToWord(lastGeneratedQuestions, 'preguntas_generadas.docx'));
 confirmYesBtn.addEventListener('click', () => { if (confirmCallback) { confirmCallback(); } customConfirmModal.style.display = 'none'; });
 confirmNoBtn.addEventListener('click', () => { customConfirmModal.style.display = 'none'; });
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => { uploadArea.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }, false); });
+
+// Drag and Drop
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => { 
+    uploadArea.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }, false); 
+});
 uploadArea.addEventListener('dragover', () => uploadArea.classList.add('drag-over'));
 uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
-uploadArea.addEventListener('drop', (e) => { uploadArea.classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleFileUpload(e.dataTransfer.files[0]); });
+uploadArea.addEventListener('drop', (e) => { 
+    uploadArea.classList.remove('drag-over'); 
+    if (e.dataTransfer.files[0]) handleFileUpload(e.dataTransfer.files[0]); 
+});
 uploadArea.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', (e) => { if (e.target.files[0]) handleFileUpload(e.target.files[0]); });
-newQuestionInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addQuestion(); } });
+newQuestionInput.addEventListener('keypress', (e) => { 
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addQuestion(); } 
+});
 
-// --- Carga Inicial ---
 updateQuestionCount();
