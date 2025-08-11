@@ -81,7 +81,6 @@ confirmNoBtn.addEventListener('click', () => {
     customConfirmModal.style.display = 'none';
 });
 
-// Carga inicial de la página
 const savedData = localStorage.getItem(STORAGE_KEY);
 questions = savedData ? JSON.parse(savedData) : [];
 renderQuestions();
