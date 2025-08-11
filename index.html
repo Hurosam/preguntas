@@ -4,10 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generador de Preguntas Aleatorias</title>
-    <!-- Librerías Externas (se cargan primero) -->
+    
+    <!-- Librerías Externas con múltiples CDNs de respaldo -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/docx@7.8.2/build/index.js"></script>
+    
+    <!-- Intentar cargar docx desde múltiples CDNs -->
+    <script>
+        // Función para cargar docx con fallbacks
+        function loadDocxLibrary() {
+            const cdnUrls = [
+                'https://unpkg.com/docx@7.8.2/build/index.js',
+                'https://cdn.jsdelivr.net/npm/docx@7.8.2/build/index.js',
+                'https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/index.min.js'
+            ];
+            
+            let currentIndex = 0;
+            
+            function tryLoadScript() {
+                if (currentIndex >= cdnUrls.length) {
+                    console.error('No se pudo cargar la biblioteca docx desde ningún CDN');
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = cdnUrls[currentIndex];
+                
+                script.onload = function() {
+                    console.log('Biblioteca docx cargada desde:', cdnUrls[currentIndex]);
+                };
+                
+                script.onerror = function() {
+                    console.warn('Falló la carga desde:', cdnUrls[currentIndex]);
+                    currentIndex++;
+                    tryLoadScript();
+                };
+                
+                document.head.appendChild(script);
+            }
+            
+            tryLoadScript();
+        }
+        
+        // Cargar la biblioteca docx
+        loadDocxLibrary();
+    </script>
+    
     <!-- Estilos locales -->
     <link rel="stylesheet" href="style.css">
 </head>
@@ -77,9 +119,9 @@
         </div>
     </div>
 
-    <!-- Script mejorado que verifica la carga de bibliotecas -->
+    <!-- Script mejorado con mejor verificación de bibliotecas -->
     <script>
-        // Verificar que todas las bibliotecas estén cargadas antes de ejecutar el script principal
+        // Función mejorada para verificar bibliotecas
         function checkLibraries() {
             const requiredLibs = {
                 'XLSX': typeof XLSX !== 'undefined',
@@ -98,6 +140,13 @@
                 console.log('saveAs:', typeof saveAs);
                 console.log('docx:', typeof docx);
                 console.log('window.docx:', typeof window.docx);
+                
+                // Si solo falta docx, permitir que la aplicación funcione sin esa funcionalidad
+                if (missingLibs.length === 1 && missingLibs[0] === 'docx') {
+                    console.warn('La funcionalidad de Word estará deshabilitada');
+                    return true; // Permitir que la app funcione
+                }
+                
                 alert('Error: No se pudieron cargar algunas bibliotecas necesarias. Por favor, recarga la página.');
                 return false;
             }
@@ -106,19 +155,39 @@
             return true;
         }
         
-        // Esperar a que el DOM y las bibliotecas estén listos
+        // Función para intentar cargar las bibliotecas con reintentos
+        function waitForLibraries(callback, maxRetries = 10, currentRetry = 0) {
+            if (currentRetry >= maxRetries) {
+                console.error('Tiempo de espera agotado para cargar las bibliotecas');
+                callback();
+                return;
+            }
+            
+            if (checkLibraries()) {
+                callback();
+            } else {
+                setTimeout(() => {
+                    waitForLibraries(callback, maxRetries, currentRetry + 1);
+                }, 500);
+            }
+        }
+        
+        // Esperar a que el DOM esté listo
         document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(() => {
-                if (checkLibraries()) {
-                    // Cargar el script principal solo si todas las bibliotecas están disponibles
-                    const script = document.createElement('script');
-                    script.src = 'index-script.js';
-                    script.onerror = function() {
-                        alert('Error al cargar el script principal.');
-                    };
-                    document.body.appendChild(script);
-                }
-            }, 100); // Pequeña demora para asegurar que las bibliotecas se carguen
+            // Esperar a que las bibliotecas se carguen
+            waitForLibraries(function() {
+                // Cargar el script principal
+                const script = document.createElement('script');
+                script.src = 'index-script.js';
+                script.onerror = function() {
+                    console.error('Error al cargar el script principal.');
+                    alert('Error al cargar el script principal.');
+                };
+                script.onload = function() {
+                    console.log('Script principal cargado correctamente');
+                };
+                document.body.appendChild(script);
+            });
         });
     </script>
 </body>

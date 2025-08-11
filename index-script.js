@@ -19,7 +19,15 @@ let questions = loadQuestions();
 let confirmCallback = null;
 let lastGeneratedQuestions = [];
 
-function saveQuestions() { localStorage.setItem(STORAGE_KEY, JSON.stringify(questions)); }
+// Verificar si las bibliotecas están disponibles
+function isDocxAvailable() {
+    return (typeof docx !== 'undefined') || (typeof window.docx !== 'undefined');
+}
+
+function saveQuestions() { 
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(questions)); 
+}
+
 function loadQuestions() {
     const savedQuestions = localStorage.getItem(STORAGE_KEY);
     return savedQuestions ? JSON.parse(savedQuestions) : [];
@@ -34,12 +42,40 @@ function updateQuestionCount() {
             questionCountInput.value = total > 0 ? total : 1;
         }
     }
+    
+    // Deshabilitar botones de Word si la biblioteca no está disponible
+    updateWordButtonsState();
+}
+
+function updateWordButtonsState() {
+    const wordButtons = document.querySelectorAll('#exportAllWordBtn, #exportGenWordBtn');
+    const docxAvailable = isDocxAvailable();
+    
+    wordButtons.forEach(button => {
+        if (!docxAvailable) {
+            button.disabled = true;
+            button.title = 'Funcionalidad de Word no disponible';
+            button.style.opacity = '0.5';
+            button.style.cursor = 'not-allowed';
+        } else {
+            button.disabled = false;
+            button.title = '';
+            button.style.opacity = '1';
+            button.style.cursor = 'pointer';
+        }
+    });
 }
 
 function addQuestion() {
     const question = newQuestionInput.value.trim();
-    if (!question) { alert('Por favor, ingresa una pregunta válida.'); return; }
-    if (questions.includes(question)) { alert('Esta pregunta ya existe en la base de datos.'); return; }
+    if (!question) { 
+        alert('Por favor, ingresa una pregunta válida.'); 
+        return; 
+    }
+    if (questions.includes(question)) { 
+        alert('Esta pregunta ya existe en la base de datos.'); 
+        return; 
+    }
     questions.push(question);
     newQuestionInput.value = '';
     updateQuestionCount();
@@ -61,8 +97,14 @@ function clearAllQuestions() {
 
 function generateQuestions() {
     const count = parseInt(questionCountInput.value);
-    if (questions.length === 0) { alert('No hay preguntas en la base de datos. ¡Agrega algunas primero!'); return; }
-    if (isNaN(count) || count <= 0 || count > questions.length) { alert(`Por favor, ingresa un número entre 1 y ${questions.length}.`); return; }
+    if (questions.length === 0) { 
+        alert('No hay preguntas en la base de datos. ¡Agrega algunas primero!'); 
+        return; 
+    }
+    if (isNaN(count) || count <= 0 || count > questions.length) { 
+        alert(`Por favor, ingresa un número entre 1 y ${questions.length}.`); 
+        return; 
+    }
     const shuffledQuestions = [...questions].sort(() => 0.5 - Math.random());
     const selectedQuestions = shuffledQuestions.slice(0, count);
     lastGeneratedQuestions = selectedQuestions;
@@ -74,21 +116,35 @@ function displayQuestions(questionList) {
         generatedQuestionsContainer.innerHTML = `<div style="text-align: center; color: #888; padding: 40px;">No hay preguntas generadas aún.</div>`;
         generatedActions.style.display = 'none';
     } else {
-        generatedQuestionsContainer.innerHTML = questionList.map((question, index) => `<div class="question-item"><span class="question-number">${index + 1}</span><span class="question-text">${question}</span></div>`).join('');
+        generatedQuestionsContainer.innerHTML = questionList.map((question, index) => 
+            `<div class="question-item">
+                <span class="question-number">${index + 1}</span>
+                <span class="question-text">${question}</span>
+            </div>`
+        ).join('');
         generatedActions.style.display = 'block';
+        updateWordButtonsState(); // Actualizar estado de botones de Word
     }
 }
 
 function exportToCsv(data, fileName) {
-    if (data.length === 0) { alert('No hay preguntas para exportar.'); return; }
+    if (data.length === 0) { 
+        alert('No hay preguntas para exportar.'); 
+        return; 
+    }
     let csvContent = "pregunta\n";
-    data.forEach(question => { csvContent += `"${question.replace(/"/g, '""')}"\n`; });
+    data.forEach(question => { 
+        csvContent += `"${question.replace(/"/g, '""')}"\n`; 
+    });
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     saveAs(blob, fileName);
 }
 
 function exportToExcel(data, fileName) {
-    if (data.length === 0) { alert('No hay preguntas para exportar.'); return; }
+    if (data.length === 0) { 
+        alert('No hay preguntas para exportar.'); 
+        return; 
+    }
     const dataForSheet = [["pregunta"], ...data.map(q => [q])];
     const worksheet = XLSX.utils.aoa_to_sheet(dataForSheet);
     const workbook = XLSX.utils.book_new();
@@ -103,15 +159,20 @@ function exportToWord(data, fileName) {
     }
     
     // Verificar si la biblioteca docx está disponible
-    if (typeof docx === 'undefined' && typeof window.docx === 'undefined') {
-        alert('La biblioteca para generar documentos de Word no está cargada. Por favor, recarga la página e intenta nuevamente.');
+    if (!isDocxAvailable()) {
+        alert('La funcionalidad de exportar a Word no está disponible en este momento. La biblioteca necesaria no se pudo cargar. Intenta usar CSV o Excel como alternativa.');
         return;
     }
     
     try {
         // Intentar acceder a docx de diferentes maneras
-        const docxLib = typeof docx !== 'undefined' ? docx : window.docx;
-        const { Document, Packer, Paragraph, LevelFormat } = docxLib;
+        const docxLib = (typeof docx !== 'undefined') ? docx : window.docx;
+        
+        if (!docxLib || !docxLib.Document || !docxLib.Packer || !docxLib.Paragraph) {
+            throw new Error('La biblioteca docx no está completamente cargada');
+        }
+        
+        const { Document, Packer, Paragraph } = docxLib;
         
         const paragraphs = data.map((question, index) => new Paragraph({
             text: `${index + 1}. ${question}`,
@@ -128,13 +189,15 @@ function exportToWord(data, fileName) {
         
         Packer.toBlob(doc).then(blob => {
             saveAs(blob, fileName);
+            showAlert('Documento Word generado exitosamente.', 'success');
         }).catch(error => {
             console.error('Error al generar el documento:', error);
-            alert('Error al generar el documento de Word.');
+            alert('Error al generar el documento de Word. Intenta usar CSV o Excel como alternativa.');
         });
+        
     } catch (error) {
         console.error('Error en exportToWord:', error);
-        alert('Error al exportar a Word. Verifica que todas las bibliotecas estén cargadas correctamente.');
+        alert('Error al exportar a Word. La funcionalidad no está disponible en este momento. Intenta usar CSV o Excel como alternativa.');
     }
 }
 
@@ -143,18 +206,37 @@ function handleFileUpload(file) {
     loadingFileName.textContent = `Procesando: ${file.name}`;
     loadingFile.style.display = 'block';
     uploadAlertPlaceholder.innerHTML = '';
+    
     const fileName = file.name.toLowerCase();
-    if (fileName.endsWith('.csv')) { processCsvFile(file); } 
-    else if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) { processExcelFile(file); } 
-    else { alert('Formato de archivo no soportado.'); resetUploadArea(); }
+    if (fileName.endsWith('.csv')) { 
+        processCsvFile(file); 
+    } else if (fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) { 
+        processExcelFile(file); 
+    } else { 
+        alert('Formato de archivo no soportado.'); 
+        resetUploadArea(); 
+    }
 }
 
 function processCsvFile(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
-        const rows = e.target.result.split('\n').slice(1);
-        const newQuestions = rows.map(row => row.trim().replace(/^"|"$/g, '')).filter(Boolean);
-        addQuestionsFromArray(newQuestions); resetUploadArea();
+        try {
+            const rows = e.target.result.split('\n').slice(1);
+            const newQuestions = rows
+                .map(row => row.trim().replace(/^"|"$/g, ''))
+                .filter(Boolean);
+            addQuestionsFromArray(newQuestions);
+        } catch (error) {
+            console.error('Error procesando CSV:', error);
+            alert('Error al procesar el archivo CSV.');
+        } finally {
+            resetUploadArea();
+        }
+    };
+    reader.onerror = () => {
+        alert('Error al leer el archivo.');
+        resetUploadArea();
     };
     reader.readAsText(file);
 }
@@ -164,38 +246,69 @@ function processExcelFile(file) {
     reader.onload = (e) => {
         try {
             const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-            const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-            const newQuestions = jsonData.slice(1).map(row => row && row[0] ? String(row[0]).trim() : null).filter(Boolean);
+            const jsonData = XLSX.utils.sheet_to_json(
+                workbook.Sheets[workbook.SheetNames[0]], 
+                { header: 1 }
+            );
+            const newQuestions = jsonData
+                .slice(1)
+                .map(row => row && row[0] ? String(row[0]).trim() : null)
+                .filter(Boolean);
             addQuestionsFromArray(newQuestions);
-        } catch (error) { console.error('Error:', error); alert('Error al procesar el archivo Excel.'); } 
-        finally { resetUploadArea(); }
+        } catch (error) { 
+            console.error('Error procesando Excel:', error); 
+            alert('Error al procesar el archivo Excel.'); 
+        } finally { 
+            resetUploadArea(); 
+        }
+    };
+    reader.onerror = () => {
+        alert('Error al leer el archivo Excel.');
+        resetUploadArea();
     };
     reader.readAsArrayBuffer(file);
 }
 
 function addQuestionsFromArray(newQuestionsArray) {
     const addedQuestions = [];
-    newQuestionsArray.forEach(q => { if (!questions.includes(q)) { questions.push(q); addedQuestions.push(q); } });
+    newQuestionsArray.forEach(q => { 
+        if (!questions.includes(q)) { 
+            questions.push(q); 
+            addedQuestions.push(q); 
+        } 
+    });
+    
     const alertDiv = document.createElement('div');
     alertDiv.className = 'alert';
+    
     if (addedQuestions.length > 0) {
-        updateQuestionCount(); saveQuestions(); 
+        updateQuestionCount(); 
+        saveQuestions(); 
         alertDiv.classList.add('alert-success');
         alertDiv.textContent = `Se agregaron ${addedQuestions.length} nuevas preguntas.`;
     } else { 
         alertDiv.classList.add('alert-warning');
         alertDiv.textContent = 'No se encontraron preguntas nuevas en el archivo o ya existían todas.';
     }
+    
     uploadAlertPlaceholder.appendChild(alertDiv);
     setTimeout(() => alertDiv.remove(), 5000);
 }
 
-function resetUploadArea() { fileInput.value = ''; loadingFile.style.display = 'none'; uploadPrompt.style.display = 'block'; }
+function resetUploadArea() { 
+    fileInput.value = ''; 
+    loadingFile.style.display = 'none'; 
+    uploadPrompt.style.display = 'block'; 
+}
 
 function showAlert(message, type) {
     const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type}`; alertDiv.textContent = message;
-    document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild.nextSibling);
+    alertDiv.className = `alert alert-${type}`; 
+    alertDiv.textContent = message;
+    document.querySelector('.container').insertBefore(
+        alertDiv, 
+        document.querySelector('.container').firstChild.nextSibling
+    );
     setTimeout(() => alertDiv.remove(), 5000);
 }
 
@@ -208,30 +321,67 @@ function showCustomConfirm(message, callback) {
 // Event Listeners
 document.getElementById('addQuestionBtn').addEventListener('click', addQuestion);
 document.getElementById('clearAllBtn').addEventListener('click', clearAllQuestions);
-document.getElementById('exportAllCsvBtn').addEventListener('click', () => exportToCsv(questions, 'banco_completo.csv'));
-document.getElementById('exportAllExcelBtn').addEventListener('click', () => exportToExcel(questions, 'banco_completo.xlsx'));
-document.getElementById('exportAllWordBtn').addEventListener('click', () => exportToWord(questions, 'banco_completo.docx'));
+document.getElementById('exportAllCsvBtn').addEventListener('click', () => 
+    exportToCsv(questions, 'banco_completo.csv'));
+document.getElementById('exportAllExcelBtn').addEventListener('click', () => 
+    exportToExcel(questions, 'banco_completo.xlsx'));
+document.getElementById('exportAllWordBtn').addEventListener('click', () => 
+    exportToWord(questions, 'banco_completo.docx'));
 document.getElementById('generateBtn').addEventListener('click', generateQuestions);
-document.getElementById('exportGenCsvBtn').addEventListener('click', () => exportToCsv(lastGeneratedQuestions, 'preguntas_generadas.csv'));
-document.getElementById('exportGenExcelBtn').addEventListener('click', () => exportToExcel(lastGeneratedQuestions, 'preguntas_generadas.xlsx'));
-document.getElementById('exportGenWordBtn').addEventListener('click', () => exportToWord(lastGeneratedQuestions, 'preguntas_generadas.docx'));
-confirmYesBtn.addEventListener('click', () => { if (confirmCallback) { confirmCallback(); } customConfirmModal.style.display = 'none'; });
-confirmNoBtn.addEventListener('click', () => { customConfirmModal.style.display = 'none'; });
+document.getElementById('exportGenCsvBtn').addEventListener('click', () => 
+    exportToCsv(lastGeneratedQuestions, 'preguntas_generadas.csv'));
+document.getElementById('exportGenExcelBtn').addEventListener('click', () => 
+    exportToExcel(lastGeneratedQuestions, 'preguntas_generadas.xlsx'));
+document.getElementById('exportGenWordBtn').addEventListener('click', () => 
+    exportToWord(lastGeneratedQuestions, 'preguntas_generadas.docx'));
+
+confirmYesBtn.addEventListener('click', () => { 
+    if (confirmCallback) { 
+        confirmCallback(); 
+    } 
+    customConfirmModal.style.display = 'none'; 
+});
+
+confirmNoBtn.addEventListener('click', () => { 
+    customConfirmModal.style.display = 'none'; 
+});
 
 // Drag and Drop
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => { 
-    uploadArea.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }, false); 
-});
-uploadArea.addEventListener('dragover', () => uploadArea.classList.add('drag-over'));
-uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
-uploadArea.addEventListener('drop', (e) => { 
-    uploadArea.classList.remove('drag-over'); 
-    if (e.dataTransfer.files[0]) handleFileUpload(e.dataTransfer.files[0]); 
-});
-uploadArea.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', (e) => { if (e.target.files[0]) handleFileUpload(e.target.files[0]); });
-newQuestionInput.addEventListener('keypress', (e) => { 
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addQuestion(); } 
+    uploadArea.addEventListener(eventName, (e) => { 
+        e.preventDefault(); 
+        e.stopPropagation(); 
+    }, false); 
 });
 
+uploadArea.addEventListener('dragover', () => 
+    uploadArea.classList.add('drag-over'));
+uploadArea.addEventListener('dragleave', () => 
+    uploadArea.classList.remove('drag-over'));
+uploadArea.addEventListener('drop', (e) => { 
+    uploadArea.classList.remove('drag-over'); 
+    if (e.dataTransfer.files[0]) 
+        handleFileUpload(e.dataTransfer.files[0]); 
+});
+
+uploadArea.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => { 
+    if (e.target.files[0]) 
+        handleFileUpload(e.target.files[0]); 
+});
+
+newQuestionInput.addEventListener('keypress', (e) => { 
+    if (e.key === 'Enter' && !e.shiftKey) { 
+        e.preventDefault(); 
+        addQuestion(); 
+    } 
+});
+
+// Inicializar la aplicación
 updateQuestionCount();
+
+// Verificar estado de las bibliotecas al cargar
+console.log('Estado de las bibliotecas:');
+console.log('XLSX disponible:', typeof XLSX !== 'undefined');
+console.log('saveAs disponible:', typeof saveAs !== 'undefined');
+console.log('docx disponible:', isDocxAvailable());
