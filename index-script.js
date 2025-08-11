@@ -322,11 +322,11 @@ function showCustomConfirm(message, callback) {
 document.getElementById('addQuestionBtn').addEventListener('click', addQuestion);
 document.getElementById('clearAllBtn').addEventListener('click', clearAllQuestions);
 document.getElementById('exportAllCsvBtn').addEventListener('click', () => 
-    exportToCsv(questions, 'banco_completo.csv'));
+    exportToCsv(questions, 'preguntas.csv'));
 document.getElementById('exportAllExcelBtn').addEventListener('click', () => 
-    exportToExcel(questions, 'banco_completo.xlsx'));
+    exportToExcel(questions, 'preguntas.xlsx'));
 document.getElementById('exportAllWordBtn').addEventListener('click', () => 
-    exportToWord(questions, 'banco_completo.docx'));
+    exportToWord(questions, 'preguntas.docx'));
 document.getElementById('generateBtn').addEventListener('click', generateQuestions);
 document.getElementById('exportGenCsvBtn').addEventListener('click', () => 
     exportToCsv(lastGeneratedQuestions, 'preguntas_generadas.csv'));
