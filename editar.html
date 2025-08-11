@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Preguntas</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>✍️ Editor de Preguntas</h1>
+        <div id="questions-list">
+            <!-- Las preguntas se cargarán aquí con JavaScript -->
+        </div>
+        <div class="page-actions" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px;">
+            <a href="index.html" class="button-style" style="background: #6c757d;">⬅️ Volver a la página principal</a>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="customConfirm">
+        <div class="modal-content">
+            <p id="confirmMessage"></p>
+            <div class="modal-buttons">
+                <button id="confirmYes" class="btn-danger">Sí, eliminar</button>
+                <button id="confirmNo" class="btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="editar-script.js"></script>
+</body>
+</html>
